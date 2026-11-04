@@ -116,6 +116,13 @@ export function openStore(filename = process.env.SQLITE_PATH || 'data/perfume.sq
     withTransaction: callback => transaction(() => callback(store)),
     hasOwner: () => !!db.prepare('SELECT id FROM users LIMIT 1').get(),
     createOwner,
+    updateOwnerName(userId, name) {
+      check(typeof name === 'string' && name.trim().length > 0 && name.trim().length <= 120, 'Enter your full name (up to 120 characters).');
+      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      check(user, 'Account not found.', 404);
+      db.prepare('UPDATE users SET name = ? WHERE id = ?').run(name.trim(), userId);
+      return publicUser({ ...user, name: name.trim() });
+    },
     findOwner: email => { const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email); return user ? publicUser(user) : null; },
     authenticate(email, password) {
       const user = db.prepare('SELECT * FROM users WHERE email = ?').get(typeof email === 'string' ? email.trim().toLowerCase() : '');

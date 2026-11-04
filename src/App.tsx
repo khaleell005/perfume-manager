@@ -15,6 +15,7 @@ import Customers from './pages/Customers';
 import Expenses from './pages/Expenses';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import { showToast } from './Toast';
 
 function Login({ setupRequired }: { setupRequired: boolean }) {
   const { business } = useBusiness();
@@ -27,7 +28,7 @@ function Login({ setupRequired }: { setupRequired: boolean }) {
     event.preventDefault();
     if (busy) return;
     setBusy(true); setMsg('');
-    try { await (setupRequired ? createOwner(email, password) : signIn(email, password)); }
+    try { await (setupRequired ? createOwner(email, password) : signIn(email, password)); showToast(setupRequired ? 'Account created successfully' : 'Login successful'); }
     catch (error) { setMsg((error as Error).message || 'Unable to sign in. Please try again.'); }
     finally { setBusy(false); }
   };
@@ -114,7 +115,7 @@ export default function App() {
     if (logoutPending.current) return;
     logoutPending.current = true;
     setLoggingOut(true);
-    try { await signOut(); setMenu(false); setDataError(''); }
+    try { await signOut(); setMenu(false); setDataError(''); showToast('Logout successful'); }
     catch { setDataError('Sign out failed. Please try again.'); }
     finally { logoutPending.current = false; setLoggingOut(false); }
   };
@@ -149,7 +150,7 @@ export default function App() {
         <main id="main-content" className="workspace-main">
           {dataError && <div className="form-notice workspace-notice" role="alert"><span>{dataError}</span><button className="icon-button" aria-label="Dismiss message" onClick={() => setDataError('')}><Icon name="close" size={16} /></button></div>}
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Dashboard name={user.displayName} />} />
             <Route path="/products" element={<Products />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/transactions" element={<Transactions />} />

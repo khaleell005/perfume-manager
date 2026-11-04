@@ -7,6 +7,7 @@ import './theme';
 import './pwa';
 import { BusinessProvider } from './business';
 import { PwaStatus } from './PwaControls';
+import { Toaster } from './Toast';
 
 const root = createRoot(document.getElementById('root')!);
 
@@ -22,7 +23,7 @@ async function start() {
   root.render(<StartupMessage><p role="status">Loading…</p></StartupMessage>);
   try {
     const { default: App } = await import('./App');
-    root.render(<StrictMode><BusinessProvider><BrowserRouter><App /><PwaStatus /></BrowserRouter></BusinessProvider></StrictMode>);
+    root.render(<StrictMode><BusinessProvider><BrowserRouter><App /><PwaStatus /><Toaster /></BrowserRouter></BusinessProvider></StrictMode>);
   } catch (error) {
     console.error('Unable to start Perfume Manager:', error);
     root.render(

@@ -1,3 +1,4 @@
+import { showToast } from '../Toast';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useBusiness } from '../business';
@@ -32,6 +33,7 @@ export default function Products() {
     const clean = { ...form, tracked: true, available: true, updatedAt: now };
     if (editId) await updateRecord('products', editId, clean);
     else await createRecord('products', { ...clean, createdAt: now });
+    showToast(editId ? 'Product updated successfully' : 'Product added successfully');
     setForm(null); setEditId(''); setErr(''); reload();
   };
 
@@ -40,6 +42,7 @@ export default function Products() {
     const amount = Number(stockAmount);
     if (!stockAmount.trim() || !Number.isInteger(amount) || amount < (stock.mode === 'restock' ? 1 : 0)) throw new Error('Enter a valid whole-number quantity.');
     await saveStockChange(stock.product.id, stock.mode, amount);
+    showToast(stock.mode === 'restock' ? 'Stock added successfully' : 'Stock adjusted successfully');
     setStock(null);
     await Promise.all([reload(), moves.reload()]);
   };
@@ -48,7 +51,7 @@ export default function Products() {
     setStock({ product, mode });
   };
 
-  const archive = async (p: Row) => { await updateRecord('products', p.id, { archived: !p.archived, updatedAt: Date.now() }); reload(); };
+  const archive = async (p: Row) => { await updateRecord('products', p.id, { archived: !p.archived, updatedAt: Date.now() }); showToast(p.archived ? 'Product restored successfully' : 'Product archived successfully'); reload(); };
 
   const rows = data.filter((p) => p.archived === showArch && p.name.toLowerCase().includes(q.toLowerCase()) &&
     (filter === 'all' || (filter === 'low' && p.quantity > 0 && p.quantity <= p.threshold) || (filter === 'out' && p.quantity === 0)));

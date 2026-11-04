@@ -4,7 +4,7 @@ import { ngn, sum, useCol } from '../lib';
 import type { Expense, Product, Sale } from '../types';
 import { Card, Empty, Icon, Page, Stat, btn, btn2 } from '../ui';
 
-export default function Dashboard() {
+export default function Dashboard({ name }: { name: string }) {
   const { data: sales } = useCol<Sale>('sales');
   const { data: exp } = useCol<Expense>('expenses');
   const { data: prods } = useCol<Product>('products');
@@ -24,7 +24,7 @@ export default function Dashboard() {
   const owed = sum(live.map((s) => s.total - s.paid));
   return (
     <Page title="Dashboard">
-      <section className="dashboard-banner"><div><div className="eyebrow">A MOMENT TO TAKE STOCK</div><h2>Your business, at a glance.</h2><p>Every sale, every bottle, every little milestone.<br />Here’s how things are coming together.</p></div><Icon name="bottle" /></section>
+      <section className="dashboard-banner"><div><div className="eyebrow">A MOMENT TO TAKE STOCK</div><h2>{name.trim() ? `Welcome, ${name.trim()}.` : 'Welcome back.'}</h2><p>Every sale, every bottle, every little milestone.<br />Here’s how things are coming together.</p></div><Icon name="bottle" /></section>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <Stat label="Total revenue" value={ngn(revenue)} />
         <Stat label="Today's sales" value={ngn(sum(live.filter((s) => s.createdAt >= t0).map((s) => s.total - (s.refunded || 0))))} />

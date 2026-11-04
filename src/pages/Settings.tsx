@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getBackup } from '../api';
 import { useBusiness } from '../business';
-import { changePassword } from '../auth';
+import { changePassword, onSessionChanged, updateProfileName } from '../auth';
+import { showToast } from '../Toast';
 import { ThemeSettings } from '../theme';
 import { InstallSettings } from '../PwaControls';
 import { emptyBiz, num, runAction } from '../lib';
@@ -35,6 +36,15 @@ export default function Settings() {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [profileReady, setProfileReady] = useState(false);
+  const [savingName, setSavingName] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const nameDirty = useRef(false);
+  useEffect(() => onSessionChanged(session => {
+    setProfileReady(!!session.user);
+    if (!nameDirty.current) setFullName(session.user?.displayName || '');
+  }, () => setProfileError('Unable to load your profile. Reload and try again.')), []);
   const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [changing, setChanging] = useState(false);
@@ -44,7 +54,7 @@ export default function Settings() {
   const save = async () => {
     if (saving) return;
     setSaving(true);
-    try { const saved = await saveBusiness(b); setB(saved); setDirty(false); setMsg('Saved everywhere.'); }
+    try { const saved = await saveBusiness(b); setB(saved); setDirty(false); setMsg('Saved everywhere.'); showToast('Settings saved successfully'); }
     finally { setSaving(false); }
   };
   const backup = async () => {
@@ -52,11 +62,29 @@ export default function Settings() {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }));
     a.download = `backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
+    a.click(); showToast('Backup downloaded');
   };
   const text = (k: keyof Biz, label: string, placeholder?: string) => <Field label={label}><input className={inp} placeholder={placeholder} value={String(b[k])} onChange={(e) => edit({ ...b, [k]: e.target.value })} /></Field>;
   return (
     <Page title="Settings">
+      <Card title="Your profile">
+        <p className="section-description">Your full name appears in the dashboard welcome and account header.</p>
+        <form onSubmit={async event => {
+          event.preventDefault();
+          if (savingName || !profileReady) return;
+          setSavingName(true); setProfileError('');
+          try {
+            const updated = await updateProfileName(fullName);
+            nameDirty.current = false; setFullName(updated.user?.displayName || '');
+            showToast('Profile updated successfully');
+          } catch (error) { setProfileError((error as Error).message); }
+          finally { setSavingName(false); }
+        }}>
+          <Field label="Full name"><input className={inp} autoComplete="name" required maxLength={120} value={fullName} disabled={!profileReady} onChange={event => { nameDirty.current = true; setFullName(event.target.value); }} /></Field>
+          {profileError && <p className="form-notice mt-3" role="alert">{profileError}</p>}
+          <button className={btn + ' mt-3'} disabled={!profileReady || savingName} type="submit">{savingName ? 'Saving…' : 'Save profile'}</button>
+        </form>
+      </Card>
       <Card title="Appearance"><p className="section-description">Choose a look for your workspace. Your preference is saved on this device.</p><ThemeSettings /></Card>
       <InstallSettings />
       <Card title="Business information">
@@ -84,7 +112,7 @@ export default function Settings() {
           event.preventDefault();
           if (changing) return;
           setChanging(true); setPasswordMessage('');
-          try { await changePassword(currentPassword, password); setCurrentPassword(''); setPassword(''); setPasswordMessage('Password updated.'); }
+          try { await changePassword(currentPassword, password); setCurrentPassword(''); setPassword(''); setPasswordMessage('Password updated.'); showToast('Password updated successfully'); }
           catch (error) { setPasswordMessage((error as Error).message); }
           finally { setChanging(false); }
         }}>

@@ -94,3 +94,19 @@ test('saved business details update authenticated settings, public branding, and
   assert.equal(product.status, 201);
   assert.equal(product.body.threshold, 8);
 });
+
+test('full name updates only the authenticated profile and survives a fresh login', async t => {
+  const { call, store } = fixture(t);
+  assert.equal((await call('/profile', { method: 'PATCH', data: { name: 'Aisha Ibrahim' } })).status, 401);
+  const { cookie } = await call('/setup', { method: 'POST', data: credentials });
+  const saved = await call('/profile', { method: 'PATCH', cookie, data: { name: '  Aisha Ibrahim  ', email: 'other@example.test' } });
+  assert.equal(saved.status, 200); assert.equal(saved.body.user.displayName, 'Aisha Ibrahim');
+  assert.equal(saved.body.user.email, credentials.email);
+  assert.equal(store.get('settings', 'business'), null);
+  assert.equal((await call('/session', { cookie })).body.user.displayName, 'Aisha Ibrahim');
+  assert.equal((await call('/profile', { method: 'PATCH', cookie, data: { name: ' ' } })).status, 400);
+  assert.equal((await call('/profile', { method: 'PATCH', cookie, data: { name: 'a'.repeat(121) } })).status, 400);
+  await call('/logout', { method: 'POST', cookie });
+  const login = await call('/login', { method: 'POST', data: credentials });
+  assert.equal(login.body.user.displayName, 'Aisha Ibrahim');
+});

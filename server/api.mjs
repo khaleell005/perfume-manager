@@ -56,6 +56,10 @@ export function createApi({ store = openStore(), secureCookies = process.env.COO
         return send({ user: account, setupRequired: false }, path === '/api/setup' ? 201 : 200);
       }
       if (!user) throw new AppError('Sign in to access your workspace.', 401);
+      if (path === '/api/profile' && req.method === 'PATCH') {
+        const data = await body(req);
+        return send({ user: store.updateOwnerName(user.id, data.name), setupRequired: false });
+      }
       if (path === '/api/logout' && req.method === 'POST') {
         store.deleteSession(token); res.setHeader('Set-Cookie', cookie('', 0)); return send({ user: null, setupRequired: false });
       }

@@ -548,3 +548,10 @@ input[type=file]::file-selector-button { border: 1px solid #e4dfd8; padding: 9px
   .paper-bottom { grid-template-columns: 1fr; gap: 20px; }
   .paper-payment { order: 2; }
 }
+
+.success-toast { position: fixed; inset: auto 16px max(24px, env(safe-area-inset-bottom)) auto; margin: 0; max-width: min(380px, calc(100vw - 32px)); padding: 14px 18px; border: 1px solid var(--ui-line); border-radius: 12px; background: var(--ui-surface); color: var(--ui-text); box-shadow: 0 10px 40px #0003; font-size: 12px; line-height: 1.5; pointer-events: none; z-index: 1000; }
+.success-toast:not(.toast-visible) { display: none; }
+.success-toast.toast-visible { display: flex; align-items: center; gap: 10px; }
+.success-toast svg { color: #678b58; flex-shrink: 0; }
+.dashboard-banner h2 { overflow-wrap: anywhere; }
+@media (max-width: 767px) { .success-toast { right: 16px; left: 16px; max-width: none; } }

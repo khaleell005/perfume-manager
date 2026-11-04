@@ -18,3 +18,4 @@ export async function signIn(email: string, password: string) { return notify(aw
 export async function createOwner(email: string, password: string) { return notify(await request<Session>('/setup', 'POST', { email, password })); }
 export async function signOut() { return notify(await request<Session>('/logout', 'POST')); }
 export const changePassword = (currentPassword: string, password: string) => request('/password', 'POST', { currentPassword, password });
+export async function updateProfileName(name: string) { return notify(await request<Session>('/profile', 'PATCH', { name })); }

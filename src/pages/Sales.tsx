@@ -1,3 +1,4 @@
+import { showToast } from '../Toast';
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { createSale } from '../api';
@@ -46,7 +47,7 @@ export default function Sales() {
     const allItems = draft.name.trim() ? [...items, draftItem()] : items;
     if (!allItems.length) throw new Error('Enter at least one perfume.');
     const sale = await createSale(allItems, customer);
-    setLatest(sale); closeSale();
+    setLatest(sale); closeSale(); showToast('Sale recorded successfully');
     await Promise.all([sales.reload(), products.reload(), customers.reload()]);
   };
   const selectProduct = (id: string) => {

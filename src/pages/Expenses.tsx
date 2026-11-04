@@ -1,3 +1,4 @@
+import { showToast } from '../Toast';
 import { useState } from 'react';
 import { createRecord, deleteExpense } from '../api';
 import { ngn, num, sum, useCol, runAction } from '../lib';
@@ -15,10 +16,10 @@ export default function Expenses() {
   const [open, setOpen] = useState(false);
   const add = async () => {
     if (!f.title.trim() || f.amount <= 0) return setErr('Enter a title and an amount above zero.');
-    await createRecord('expenses', f);
+    await createRecord('expenses', f); showToast('Expense recorded successfully');
     setF({ ...f, title: '', amount: 0, description: '' }); setErr(''); setOpen(false); reload();
   };
-  const del = async (id: string) => { if (confirm('Delete this expense?')) { await deleteExpense(id); reload(); } };
+  const del = async (id: string) => { if (confirm('Delete this expense?')) { await deleteExpense(id); showToast('Expense deleted successfully'); reload(); } };
   const rows = data.filter((e) => (!cat || e.category === cat) && (!month || e.date.startsWith(month))).sort((a, b) => b.date.localeCompare(a.date));
   return (
     <Page title="Expenses" right={<button className={btn} onClick={() => { setF({ title: '', category: CATEGORIES[0], amount: 0, date: today(), description: '' }); setErr(''); setOpen(true); }}>Add expense</button>}>

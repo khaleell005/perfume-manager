@@ -1,12 +1,14 @@
-import { EmailAuthProvider, onIdTokenChanged, reauthenticateWithCredential, signInWithEmailAndPassword, signOut as firebaseSignOut, updatePassword } from 'firebase/auth';
+import { EmailAuthProvider, onIdTokenChanged, reauthenticateWithCredential, signInWithEmailAndPassword, signOut as firebaseSignOut, updatePassword, updateProfile } from 'firebase/auth';
 import { auth } from '../../firebase';
 import type { User as FirebaseUser } from 'firebase/auth';
 
 export interface User { id: string; email: string; displayName: string }
 export interface Session { user: User | null; setupRequired: boolean }
 const session = (user: FirebaseUser | null): Session => ({ user: user ? { id: user.uid, email: user.email || '', displayName: user.displayName || 'Business admin' } : null, setupRequired: false });
+const profileListeners = new Set<(session: Session) => void>();
 export function onSessionChanged(callback: (session: Session) => void, onError: () => void) {
   let active = true, version = 0;
+  profileListeners.add(callback);
   const unsubscribe = onIdTokenChanged(auth, async user => {
     const current = ++version;
     try {
@@ -14,7 +16,7 @@ export function onSessionChanged(callback: (session: Session) => void, onError: 
       if (active && current === version) callback(session(admin ? user : null));
     } catch { if (active && current === version) onError(); }
   }, () => { if (active) onError(); });
-  return () => { active = false; unsubscribe(); };
+  return () => { active = false; profileListeners.delete(callback); unsubscribe(); };
 }
 export async function signIn(email: string, password: string) {
   try {
@@ -35,6 +37,16 @@ export async function signIn(email: string, password: string) {
 // Public owner registration stays disabled; only the server-side setup grants admin access.
 export async function createOwner(_email: string, _password: string): Promise<Session> { throw new Error('Ask the business admin for access.'); }
 export async function signOut() { await firebaseSignOut(auth); return session(null); }
+export async function updateProfileName(name: string) {
+  name = name.trim();
+  if (!name || name.length > 120) throw new Error('Enter your full name (up to 120 characters).');
+  const user = auth.currentUser;
+  if (!user) throw new Error('Sign in before updating your name.');
+  await updateProfile(user, { displayName: name });
+  const updated = session(user);
+  profileListeners.forEach(listener => listener(updated));
+  return updated;
+}
 export async function changePassword(currentPassword: string, password: string) {
   const user = auth.currentUser;
   if (!user?.email) throw new Error('Sign in before changing your password.');
