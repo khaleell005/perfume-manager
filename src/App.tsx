@@ -143,7 +143,7 @@ export default function App() {
             <ThemeToggle />
             <span className="topbar-date"><Icon name="calendar" size={16} />{new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             <NavLink to="/settings" className="account-chip" title={user.email || 'Account settings'}><span className="avatar">{(user.displayName || user.email || 'A').slice(0, 1).toUpperCase()}</span><span className="account-copy"><strong>{user.displayName || 'Business owner'}</strong><span>Administrator</span></span></NavLink>
-            <button type="button" className="button button-secondary mobile-logout" aria-label="Log out" title="Log out" disabled={loggingOut} onClick={logout}><Icon name="logout" size={17} /><span>{loggingOut ? 'Leaving…' : 'Log out'}</span></button>
+            <button type="button" className="icon-button header-logout" aria-label={loggingOut ? 'Logging out' : 'Log out'} title="Log out" aria-busy={loggingOut} disabled={loggingOut} onClick={logout}><Icon name="logout" size={20} /></button>
           </div>
         </header>
         <main id="main-content" className="workspace-main">
