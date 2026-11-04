@@ -1,14 +1,21 @@
 import type { Biz, Product, Sale, SaleItem } from './types';
+import { auth } from './firebase';
+import { signOut } from 'firebase/auth';
 
 export async function request<T>(path: string, method = 'GET', data?: unknown): Promise<T> {
+  await auth.authStateReady();
+  const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
   const response = await fetch('/api' + path, {
     method, credentials: 'same-origin',
-    ...(data === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(data === undefined ? {} : { 'Content-Type': 'application/json' }) },
+    ...(data === undefined ? {} : { body: JSON.stringify(data) }),
   });
   if (!response.headers.get('content-type')?.includes('application/json')) throw new Error('The workspace server is unavailable. Restart the app and try again.');
   const result = await response.json();
   if (!response.ok) {
-    if (response.status === 401 && !['/login', '/password'].includes(path)) window.dispatchEvent(new Event('session-expired'));
+    if (response.status === 401) {
+      await signOut(auth);
+    }
     throw new Error(result.error || 'The request could not be completed.');
   }
   if (method !== 'GET' && !['/login', '/setup', '/logout', '/password'].includes(path)) window.dispatchEvent(new Event('workspace-data-changed'));

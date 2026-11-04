@@ -84,7 +84,7 @@ export default function Settings() {
           event.preventDefault();
           if (changing) return;
           setChanging(true); setPasswordMessage('');
-          try { await changePassword(currentPassword, password); setCurrentPassword(''); setPassword(''); setPasswordMessage('Password updated. Other sessions have been signed out.'); }
+          try { await changePassword(currentPassword, password); setCurrentPassword(''); setPassword(''); setPasswordMessage('Password updated.'); }
           catch (error) { setPasswordMessage((error as Error).message); }
           finally { setChanging(false); }
         }}>

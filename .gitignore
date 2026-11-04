@@ -10,3 +10,19 @@ data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+
+# Local SQLite artifacts and exports (backend disabled for now)
+*.sqlite*
+*.db
+*.db-*
+*.db3
+*.sqlite3*
+*.sql
+*.sql.gz
+# Local service account keys and Firebase tooling cache
+*adminsdk*.json
+serviceAccount*.json
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*

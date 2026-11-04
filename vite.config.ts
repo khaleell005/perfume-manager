@@ -1,30 +1,30 @@
-import { defineConfig, loadEnv, type Plugin } from 'vite';
-import { createApi } from './server/api.mjs';
-import { openStore } from './server/database.mjs';
+import { defineConfig, type Plugin } from 'vite';
+import { createApi } from './server/firebase-api.mjs';
+// SQLite backend retained in server/api.mjs and server/database.mjs for later use.
+// import { createApi } from './server/api.mjs';
+// import { openStore } from './server/database.mjs';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-function sqliteBackend(): Plugin {
-  let databasePath: string | undefined;
-  const attach = (server: { middlewares: { use: (handler: ReturnType<typeof createApi>) => void }; httpServer: { once: (event: string, listener: () => void) => unknown } | null }) => {
-    const store = openStore(databasePath);
-    server.middlewares.use(createApi({ store }));
-    server.httpServer?.once('close', () => store.close());
+function firebaseBackend(): Plugin {
+  const attach = (server: { middlewares: { use: (handler: ReturnType<typeof createApi>) => void } }) => {
+    server.middlewares.use(createApi());
   };
-  return {
-    name: 'sqlite-backend',
-    configResolved(config) { databasePath = loadEnv(config.mode, config.envDir, '').SQLITE_PATH; },
-    configureServer: attach,
-    configurePreviewServer: attach,
-  };
+  return { name: 'firebase-backend', configureServer: attach, configurePreviewServer: attach };
 }
 
 export default defineConfig({
+  server: {
+    fs: {
+      deny: ['**/.env', '**/.env.*', '**/*.{crt,pem}', '**/.git/**', '**/*adminsdk*.json', '**/*service-account*.json', '**/serviceAccount*.json', '**/data/**', '**/*.sqlite*', '**/*.db*'],
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),
-    sqliteBackend(),
+    // sqliteBackend() is disabled while Firebase is active.
+    firebaseBackend(),
     VitePWA({
       registerType: 'prompt',
       injectRegister: false,
@@ -34,11 +34,11 @@ export default defineConfig({
         navigateFallbackAllowlist: [],
         suppressWarnings: true,
       },
-      includeAssets: ['favicon.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'],
+      includeAssets: ['icon.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'],
       workbox: {
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api(?:\/|$)/],
-        // Only the app shell is cached. Private SQLite API responses stay on the server.
+        // Only the app shell is cached. Private Firebase API responses are never cached.
         runtimeCaching: [],
       },
       // The API serves a manifest with the current business name.

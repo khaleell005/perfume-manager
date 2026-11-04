@@ -13,7 +13,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   try {
     try { process.loadEnvFile(); } catch (error) { if (error.code !== 'ENOENT') throw error; }
     const store = openStore();
-    try { console.log(`Business profile ready: ${seedBusiness(store).name}`); }
+    try { console.log(`Local SQLite business profile ready: ${seedBusiness(store).name}`); }
     finally { store.close(); }
   } catch (error) { console.error('Business seed failed:', error.message); process.exitCode = 1; }
 }

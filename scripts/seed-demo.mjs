@@ -92,7 +92,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       console.log(`Demo data ready for ${result.business}.`);
       console.log('Added: ' + Object.entries(result.added).map(([name, count]) => `${count} ${name}`).join(', '));
       console.log('Totals: ' + Object.entries(result.totals).map(([name, count]) => `${count} ${name}`).join(', '));
-      console.log('Existing records and owner credentials are preserved. Refresh the app to see the data.');
+      console.log('Existing local SQLite records and owner credentials are preserved. The active Firebase workspace is unchanged.');
     } finally { store.close(); }
   } catch (error) { console.error('Demo seed failed:', error.message); process.exitCode = 1; }
 }

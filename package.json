@@ -7,13 +7,20 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "seed:admin": "node scripts/seed-admin.mjs",
+    "seed:admin": "node scripts/setup-firebase.mjs",
     "start": "node server/index.mjs",
-    "test": "node --test server/*.test.mjs scripts/*.test.mjs",
+    "test": "node --test server/workspace.test.mjs server/firestore-store.test.mjs server/firebase-api.test.mjs",
     "seed:business": "node scripts/seed-business.mjs",
-    "seed:demo": "node scripts/seed-demo.mjs"
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "firebase:setup": "node scripts/setup-firebase.mjs",
+    "sqlite:seed:admin": "node scripts/seed-admin.mjs",
+    "sqlite:test": "node --test server/*.test.mjs scripts/*.test.mjs",
+    "firebase:seed-brand": "node scripts/seed-firebase-brand.mjs",
+    "firebase:verify": "node scripts/verify-firebase.mjs"
   },
   "dependencies": {
+    "firebase": "^13.2.0",
+    "firebase-admin": "^14.5.0",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",
     "react": "^18.3.1",

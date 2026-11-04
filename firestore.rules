@@ -1,10 +1,16 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Replace with the owner's login email. Everyone else is denied.
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+    // Admin claims are assigned only by the trusted Admin SDK setup script.
+    match /{collection}/{record} {
+      allow read, create, update, delete: if isAdmin()
+        && collection in ['products', 'customers', 'expenses', 'settings', 'stockMovements', 'sales'];
+    }
     match /{document=**} {
-      allow read, write: if request.auth != null
-        && request.auth.token.email == 'OWNER_EMAIL_HERE';
+      allow read, write: if false;
     }
   }
 }
