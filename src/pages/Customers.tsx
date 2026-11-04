@@ -1,0 +1,15 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ngn, sum, useCol, waLink } from '../lib';
+import type { Customer, Sale } from '../types';
+import { Card, Empty, Page, Stat, btn2, inp } from '../ui';
+
+export default function Customers() {
+  const { data } = useCol<Customer>('customers');
+  const { data: sales } = useCol<Sale>('sales');
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState('');
+  const mine = (id: string) => sales.filter(sale => sale.customerId === id);
+  const rows = data.filter(customer => `${customer.name} ${customer.phone} ${customer.email}`.toLowerCase().includes(query.toLowerCase()));
+  return <Page title="Customers"><div className="grid grid-cols-2 gap-3 md:grid-cols-3"><Stat label="Customers remembered" value={data.length} /><Stat label="Returning customers" value={data.filter(customer => mine(customer.id).length > 1).length} /><Stat label="Net customer purchases" value={ngn(sum(sales.filter(sale => sale.customerId && !sale.cancelled).map(sale => sale.total - (sale.refunded || 0))))} /></div><p className="section-description">Customers are saved automatically when you record a sale. Start typing a returning customer’s name in Sales to fill in their details.</p><div className="filter-bar"><input className={inp + ' max-w-xs'} aria-label="Search customers" placeholder="Name, phone or email…" value={query} onChange={event => setQuery(event.target.value)} /></div><Card title="Your people" right={<div className="collection-meta"><span>{rows.length}</span> customers</div>}>{!rows.length ? <Empty text="Customer details will appear here after your first sale." /> : rows.map(customer => { const history = mine(customer.id); return <div className="customer-record" key={customer.id}><div className="transaction-row"><div><div className="customer-name"><span className="customer-initial" aria-hidden="true">{customer.name[0]?.toUpperCase()}</span><strong>{customer.name}</strong>{history.length > 1 && <span className="status-badge status-paid">Returning</span>}</div><p>{[customer.phone, customer.email].filter(Boolean).join(' · ') || 'No contact details recorded'}</p><p>{history.length} invoices · {ngn(sum(history.filter(sale => !sale.cancelled).map(sale => sale.total - (sale.refunded || 0))))} net purchases</p></div><div className="invoice-actions">{customer.phone && <a className={btn2} href={waLink(customer.phone)} target="_blank" rel="noreferrer">WhatsApp</a>}<button className={btn2} onClick={() => setSelected(selected === customer.id ? '' : customer.id)}>Purchase history</button></div></div>{selected === customer.id && <div className="customer-history">{!history.length ? <p>No invoices yet.</p> : [...history].sort((a, b) => b.createdAt - a.createdAt).map(sale => <Link key={sale.id} to={`/transactions?invoice=${sale.invoiceNo}`}>{sale.invoiceNo} · {new Date(sale.createdAt).toLocaleDateString()} · {ngn(sale.total)}{sale.cancelled ? ' · Cancelled' : ''}</Link>)}</div>}</div>; })}</Card></Page>;
+}
