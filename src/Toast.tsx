@@ -15,7 +15,7 @@ export function Toaster() {
     const show = (event: Event) => {
       clearTimeout(timer.current);
       setToast({ message: (event as CustomEvent<string>).detail, id: ++sequence.current });
-      timer.current = setTimeout(() => setToast(null), 1000);
+      timer.current = setTimeout(() => setToast(null), 2000);
     };
     window.addEventListener('workspace-success', show);
     return () => { window.removeEventListener('workspace-success', show); clearTimeout(timer.current); };
@@ -24,5 +24,9 @@ export function Toaster() {
     if (toast) popup.current?.showPopover?.();
     else popup.current?.hidePopover?.();
   }, [toast]);
-  return <div ref={popup} className={`success-toast${toast ? ' toast-visible' : ''}`} role="status" aria-live="polite" aria-atomic="true"><Icon name="check" size={19} /><span>{toast?.message}</span></div>;
+  return <div ref={popup} className={`success-toast${toast ? ' toast-visible' : ''}`} role="status" aria-live="polite" aria-atomic="true">
+    <span className="toast-symbol" aria-hidden="true"><span className="toast-check"><Icon name="check" size={14} /></span></span>
+    <div className="toast-copy"><strong>Success</strong><p>{toast?.message}</p></div>
+    <button className="toast-dismiss" type="button" aria-label="Dismiss notification" onClick={() => { clearTimeout(timer.current); setToast(null); }}><Icon name="close" size={18} /></button>
+  </div>;
 }
