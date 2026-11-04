@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+const randomUUID = () => globalThis.crypto.randomUUID();
 import { businessDefaults } from '../shared/business.mjs';
 import { AppError } from './errors.mjs';
 export { AppError } from './errors.mjs';

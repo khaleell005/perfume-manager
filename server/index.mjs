@@ -1,8 +1,8 @@
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
-// SQLite API is disabled: import { createApi } from './api.mjs';
-import { createApi } from './firebase-api.mjs';
+import { createApi } from './api.mjs';
+// Local server uses SQLite. Firebase backend remains available in firebase-api.mjs.
 try { process.loadEnvFile(); } catch (error) { if (error.code !== 'ENOENT') throw error; }
 const api = createApi();
 const root = resolve('dist');

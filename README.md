@@ -1,32 +1,27 @@
 # Perfume Manager
 
-A private perfume inventory, sales, expenses, customer, and invoicing app. The active app uses Firebase Authentication and Cloud Firestore through its Node API. The earlier SQLite implementation and its local demo data remain in the repository for later use; they are not connected to Firebase.
+A private perfume inventory, sales, expenses, customer, and invoicing app. Local development uses SQLite; the production build uses Firebase Authentication and Cloud Firestore directly from the browser.
 
-## Run locally
+## Local SQLite
 
-Use Node.js 22.13 or newer. Copy `.env.example` to `.env` and provide the Firebase web configuration, project ID, and path to the root Admin SDK JSON file. The Firebase web values in `.env` are already configured in this workspace; `.env` and service account JSON files are ignored by Git. Keep the service account on the server only.
+Use Node.js 22.13 or newer. Local development, preview, and `npm start` use `data/perfume.sqlite`. The existing local owner and demo records remain available. No Firebase connection is made by the local app.
 
 ```sh
 npm install
 npm run dev
 ```
 
-Sign in with the Firebase admin account. Public owner registration is disabled. `npm run dev`, `npm run preview`, and `npm start` all use the Firebase API. A bare static hosting deployment cannot serve the API endpoints; deploy the Node server together with `dist` or use an equivalent server environment.
+If this machine has no local owner yet, set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the ignored `.env` file and run `npm run seed:admin`. `npm run seed:business` and `npm run seed:demo` update only SQLite. SQLite data files and `.env` are ignored by Git.
 
-```sh
-npm run build
-npm start
-```
+`npm start` builds and serves the local SQLite version. `npm run preview` does the same through Vite. To build without starting a server, use `npm run build:local`.
 
-## Firebase setup
+## Production Firebase
 
-`npm run firebase:setup` enables email/password sign-in, creates or finds `ADMIN_EMAIL`, grants its `admin` custom claim, ensures the default Firestore database exists, and publishes [firestore.rules](firestore.rules). It preserves an existing Firebase password unless `--reset-password` is passed. `ADMIN_EMAIL` and `ADMIN_PASSWORD` are read from `.env`; remove the password from that file after setup if no longer needed. The application does not allow public sign-up. Admin requests require a verified ID token; the Firestore rules grant CRUD only to an admin claim on the workspace collections.
+`npm run build` produces the Firebase frontend using the `VITE_FIREBASE_*` environment values supplied by the build environment. The signed-in admin reads and writes Firestore directly under the deployed admin-only security rules. The browser does not call a `/api` workspace server in this build. Sales, stock, invoice numbering, payments, and refunds use Firestore transactions.
 
-`npm run firebase:seed-brand` saves **Perfume by Aysha** and `logo.jpg` to the Firestore business profile if those fields are empty. This is the only seeded cloud document. Product, customer, sale, expense, refund, and stock records start empty. The brand is loaded from Firestore on the login page, sidebar, PWA manifest, and invoices. You can change it later in Settings.
+The root `.env` has its Firebase settings commented out. `SQLITE_PATH` selects the local database. `npm run dev`, `npm start`, and `npm run preview` use SQLite. Local owner accounts and business records remain available after commenting these keys; no local records are sent to Firestore.
 
-`npm run firebase:verify` checks sign-in, admin claim, published rules, access control, and cloud record counts without writing sample data. Cloud records are never copied from the local SQLite database.
-
-The previous SQLite API, database code, and seed scripts remain available for later use. `npm run seed:demo` and `npm run seed:business` affect only local SQLite. The local SQLite test suite is `npm run sqlite:test`. SQLite data files are ignored by Git.
+The production sign-in screen and installation manifest include the bundled business branding. After sign-in, invoice and workspace details load from the saved Firestore business profile. The Admin SDK key is not needed by the browser build.
 
 ## Admin guide
 
@@ -36,7 +31,7 @@ The previous SQLite API, database code, and seed scripts remain available for la
 - **Invoices:** Every saved sale receives a unique sequential number such as `INV-00001`. The receipt offers PDF download, print, and the device share sheet. If file sharing is unsupported or denied, the PDF downloads for manual attachment. WhatsApp downloads the PDF and opens the customer's chat; attach that PDF before sending.
 - **Transactions:** Search by invoice number, customer, phone, or date. Open an invoice, share it again, record further payments, or initiate a refund. Customer purchase histories link to their invoices here.
 - **Refunds:** Choose Initiate refund, review the amount, and click Confirm refund. Confirmation immediately deducts the amount from net sales and payments in reports, and records it in invoice history. There is no pending stage or second approval. Refunds are limited to payments actually received minus previous refunds. A partial refund leaves stock unchanged; optionally cancel the entire sale and restore its items when refunding the full remaining payment. Repeated submission of the same confirmation cannot refund twice. The app records money returned through your usual payment method; it does not transfer funds itself.
-- **Settings:** Save business details once to update login/sidebar branding, page title, workspace footer, installation name, invoice previews, PDF downloads, printing, sharing, and WhatsApp messages. Phone, WhatsApp, email, address, Instagram and TikTok usernames, logo, and thank-you message appear on invoices. Add social usernames and your WhatsApp number under Social accounts in Settings; blank accounts are omitted. An already-open invoice also refreshes when settings are saved in another browser tab. The default stock threshold applies to newly added products. Download backup exports all business records, including refund histories, as JSON (account passwords and sessions are excluded). For a separate backup, use a Firestore export from the Firebase project.
+- **Settings:** Save business details once to update login/sidebar branding, page title, workspace footer, installation name, invoice previews, PDF downloads, printing, sharing, and WhatsApp messages. Phone, WhatsApp, email, address, Instagram and TikTok usernames, logo, and thank-you message appear on invoices. Add social usernames and your WhatsApp number under Social accounts in Settings; blank accounts are omitted. An already-open invoice also refreshes when settings are saved in another browser tab. The default stock threshold applies to newly added products. Download backup exports business records, including refund histories, as JSON in either environment (account passwords and sessions are excluded). For a complete local database backup, stop the local server and copy `data/perfume.sqlite`; use a Firestore export for cloud backups.
 - **Reports:** Confirmed refunds immediately reduce net sales and payments. Net sales for a selected period reflect the current refund/cancellation state of the sales in that period. Export CSV records, including refunded amounts.
 
 ## Checks
@@ -46,7 +41,7 @@ npm test
 npm run build
 ```
 
-The active tests cover Firestore data operations, transaction rollback, invoice numbering, stock accounting, customer reuse, refunds, and Firebase API access controls. The SQLite tests remain available separately.
+Tests cover both the local SQLite API and Firebase data operations, including stock accounting, refunds, and API access controls.
 
 ## Appearance and app installation
 
@@ -54,6 +49,6 @@ Use the sun/moon button on the sign-in page or workspace toolbar to switch theme
 
 The production build is an installable PWA with desktop/Android icons and an Apple touch icon. Run `npm run build && npm start`, then use Settings → Install app when supported, or the browser's installation menu. On iPhone/iPad, open the app in Safari and use Share → Add to Home Screen. Installation requires HTTPS or localhost; see the [browser installation requirements](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable).
 
-The production service worker caches the app shell and static assets. Firebase records and authentication still require the Node server; private API responses are never cached and offline changes are not queued. The app shows a connection notice when offline. An available update asks before reloading, so you can save your work first; close any entry dialog before applying it.
+The production service worker caches the app shell and static assets. Local SQLite records require the local server, and Firebase records require an internet connection; private API responses are never cached and offline changes are not queued. The app shows a connection notice when offline. An available update asks before reloading, so you can save your work first; close any entry dialog before applying it.
 
 PWA registration and installation are also enabled with `npm run dev`. Restart Vite after changing its configuration, then open its localhost URL and use Settings → Install app when the browser offers installation. The development worker leaves navigation requests on the live Vite server so hot updates work; use the production build to test offline asset caching. An app installed from port 5173 uses that development server, while an app installed from port 4173 uses the production server.

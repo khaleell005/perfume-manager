@@ -4,19 +4,20 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --mode sqlite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "seed:admin": "node scripts/setup-firebase.mjs",
-    "start": "node server/index.mjs",
-    "test": "node --test server/workspace.test.mjs server/firestore-store.test.mjs server/firebase-api.test.mjs",
+    "preview": "npm run build:local && vite preview --mode sqlite",
+    "seed:admin": "node scripts/seed-admin.mjs",
+    "start": "npm run build:local && node server/index.mjs",
+    "test": "node --test server/*.test.mjs scripts/*.test.mjs",
     "seed:business": "node scripts/seed-business.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
     "firebase:setup": "node scripts/setup-firebase.mjs",
     "sqlite:seed:admin": "node scripts/seed-admin.mjs",
     "sqlite:test": "node --test server/*.test.mjs scripts/*.test.mjs",
     "firebase:seed-brand": "node scripts/seed-firebase-brand.mjs",
-    "firebase:verify": "node scripts/verify-firebase.mjs"
+    "firebase:verify": "node scripts/verify-firebase.mjs",
+    "build:local": "tsc --noEmit && vite build --mode sqlite"
   },
   "dependencies": {
     "firebase": "^13.2.0",
