@@ -1,10 +1,12 @@
 import { EmailAuthProvider, onIdTokenChanged, reauthenticateWithCredential, signInWithEmailAndPassword, signOut as firebaseSignOut, updatePassword, updateProfile } from 'firebase/auth';
 import { auth } from '../../firebase';
+import { startActivitySession } from '../../idleSession';
 import type { User as FirebaseUser } from 'firebase/auth';
 
 export interface User { id: string; email: string; displayName: string }
 export interface Session { user: User | null; setupRequired: boolean }
 const session = (user: FirebaseUser | null): Session => ({ user: user ? { id: user.uid, email: user.email || '', displayName: user.displayName || 'Business admin' } : null, setupRequired: false });
+let signingIn = false;
 const profileListeners = new Set<(session: Session) => void>();
 export function onSessionChanged(callback: (session: Session) => void, onError: () => void) {
   let active = true, version = 0;
@@ -13,18 +15,23 @@ export function onSessionChanged(callback: (session: Session) => void, onError: 
     const current = ++version;
     try {
       const admin = user && (await user.getIdTokenResult()).claims.admin === true;
-      if (active && current === version) callback(session(admin ? user : null));
+      if (active && current === version) {
+        if (admin && user && signingIn) startActivitySession(user.uid);
+        callback(session(admin ? user : null));
+      }
     } catch { if (active && current === version) onError(); }
   }, () => { if (active) onError(); });
   return () => { active = false; profileListeners.delete(callback); unsubscribe(); };
 }
 export async function signIn(email: string, password: string) {
+  signingIn = true;
   try {
     const { user } = await signInWithEmailAndPassword(auth, email.trim(), password);
     if ((await user.getIdTokenResult(true)).claims.admin !== true) {
       await firebaseSignOut(auth);
       throw new Error('This account does not have admin access.');
     }
+    startActivitySession(user.uid);
     return session(user);
   } catch (error) {
     const code = (error as { code?: string }).code;
@@ -32,7 +39,7 @@ export async function signIn(email: string, password: string) {
     if (code === 'auth/too-many-requests') throw new Error('Too many sign-in attempts. Please try again later.');
     if (code === 'auth/network-request-failed') throw new Error('Unable to connect. Check your internet connection.');
     throw error;
-  }
+  } finally { signingIn = false; }
 }
 // Public owner registration stays disabled; only the server-side setup grants admin access.
 export async function createOwner(_email: string, _password: string): Promise<Session> { throw new Error('Ask the business admin for access.'); }

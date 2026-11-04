@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { onSessionChanged, createOwner, signIn, signOut, type User } from './auth';
 import { Brand, BottleArt, Icon, btn, Field, inp } from './ui';
@@ -16,8 +16,9 @@ import Expenses from './pages/Expenses';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import { showToast } from './Toast';
+import { sessionIsIdle, useIdleLogout } from './idleSession';
 
-function Login({ setupRequired }: { setupRequired: boolean }) {
+function Login({ setupRequired, notice }: { setupRequired: boolean; notice: string }) {
   const { business } = useBusiness();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,6 +47,7 @@ function Login({ setupRequired }: { setupRequired: boolean }) {
         <div className="login-form-wrap">
           <span className="login-welcome"><span /> YOUR BUSINESS, IN GOOD HANDS</span>
           <h2>{setupRequired ? 'Make it yours' : 'Welcome back'}<span>.</span></h2><p className="login-description">{setupRequired ? 'Create your owner account to start your workspace.' : 'A fresh start to a well-organized day.'}<br />{setupRequired ? 'Choose an email and a password of at least 8 characters.' : 'Sign in to your workspace.'}</p>
+          {notice && <p className="form-notice mb-4" role="status">{notice}</p>}
           <form onSubmit={login} className="login-form">
             <Field label="Email address"><input className={inp} type="email" autoComplete="username" placeholder="you@yourbusiness.com" value={email} required onChange={(e) => setEmail(e.target.value)} /></Field>
             <div><div className="password-label"><label htmlFor="login-password" className="field-label">Password</label>{!setupRequired && <button type="button" disabled={busy} onClick={help}>Need help?</button>}</div><div className="password-input"><input id="login-password" className={inp} type={visible ? 'text' : 'password'} autoComplete={setupRequired ? 'new-password' : 'current-password'} minLength={setupRequired ? 8 : undefined} placeholder={setupRequired ? 'Choose a strong password' : 'Enter your password'} value={password} required onChange={(e) => setPassword(e.target.value)} /><button type="button" aria-label={visible ? 'Hide password' : 'Show password'} aria-pressed={visible} onClick={() => setVisible(!visible)}><Icon name={visible ? 'lock' : 'eye'} size={19} /></button></div></div>
@@ -78,10 +80,27 @@ export default function App() {
   const [setupRequired, setSetupRequired] = useState(false);
   const [dataError, setDataError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
+  const [idleNotice, setIdleNotice] = useState('');
   const logoutPending = useRef(false);
   const { pathname } = useLocation();
   const { online } = usePwa();
-  useEffect(() => onSessionChanged((session) => { setUser(session.user); setSetupRequired(session.setupRequired); setAuthError(''); }, () => setAuthError('Unable to reach your workspace. Check that the app server is running, then reload.')), []);
+  const expireIdleSession = useCallback(() => {
+    if (logoutPending.current) return;
+    logoutPending.current = true;
+    setLoggingOut(true); setUser(null); setMenu(false); setDataError(''); setAuthError('');
+    setIdleNotice('You were signed out after 5 minutes of inactivity. Please sign in again.');
+    window.dispatchEvent(new Event('session-expired'));
+    void signOut().then(() => showToast('Logged out after 5 minutes of inactivity')).catch(() => {
+      setIdleNotice('Your session was locked after 5 minutes of inactivity. Reconnect and sign in again.');
+    }).finally(() => { logoutPending.current = false; setLoggingOut(false); });
+  }, []);
+  useIdleLogout(user?.id, expireIdleSession);
+  useEffect(() => onSessionChanged((session) => {
+    setSetupRequired(session.setupRequired); setAuthError('');
+    if (session.user && sessionIsIdle(session.user.id)) { expireIdleSession(); return; }
+    setUser(session.user);
+    if (session.user) setIdleNotice('');
+  }, () => setAuthError('Unable to reach your workspace. Check that the app server is running, then reload.')), [expireIdleSession]);
   useEffect(() => {
     const showError = (event: Event) => setDataError((event as CustomEvent<string>).detail);
     window.addEventListener('workspace-error', showError);
@@ -121,7 +140,7 @@ export default function App() {
   };
   if (authError) return <div className="session-loading" role="alert"><Brand /><p>{online ? authError : 'You’re offline. Reconnect to open your workspace.'}</p></div>;
   if (user === undefined) return <div className="session-loading" role="status"><Brand /><span className="spinner" /><p>Opening your workspace…</p></div>;
-  if (!user) return <Login setupRequired={setupRequired} />;
+  if (!user) return <Login setupRequired={setupRequired} notice={idleNotice} />;
   const current = nav.find((item) => item.to === pathname)?.label || 'Settings';
   const link = ({ isActive }: { isActive: boolean }) => `nav-link ${isActive ? 'nav-active' : ''}`;
   return (

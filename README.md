@@ -25,6 +25,7 @@ The production sign-in screen and installation manifest include the bundled busi
 
 ## Admin guide
 
+- **Session security:** Five minutes without interaction signs you out. Activity in another open tab keeps the session active. Refreshing or returning from a suspended tab does not revive an expired session.
 - **Your profile:** Save your full name in Settings → Your profile. Your account name appears in the dashboard welcome and header and persists across sessions. Successful login, logout, and saved actions show a two-second confirmation toast.
 - **Products:** Add a perfume name, category, ml size, selling price, quantity, and low-stock threshold. Products track stock automatically. Restock and Adjust record inventory changes; archive instead of deleting.
 - **Sales:** Enter the customer name directly. Returning-customer suggestions fill their contact details. Type a perfume name and choose an inventory suggestion to fill its size and selling price, or enter a new perfume manually. Manual perfumes do not alter inventory. Use Add another perfume for multiple items; the final entered item is included when you save.

@@ -1,4 +1,5 @@
 import { request } from './api';
+import { startActivitySession } from '../../idleSession';
 
 export interface User { id: string; email: string; displayName: string }
 export interface Session { user: User | null; setupRequired: boolean }
@@ -14,8 +15,8 @@ export function onSessionChanged(callback: (session: Session) => void, onError: 
   window.addEventListener('session-expired', expired);
   return () => { active = false; listeners.delete(callback); window.removeEventListener('online', refresh); window.removeEventListener('session-expired', expired); };
 }
-export async function signIn(email: string, password: string) { return notify(await request<Session>('/login', 'POST', { email, password })); }
-export async function createOwner(email: string, password: string) { return notify(await request<Session>('/setup', 'POST', { email, password })); }
+export async function signIn(email: string, password: string) { const session = await request<Session>('/login', 'POST', { email, password }); if (session.user) startActivitySession(session.user.id); return notify(session); }
+export async function createOwner(email: string, password: string) { const session = await request<Session>('/setup', 'POST', { email, password }); if (session.user) startActivitySession(session.user.id); return notify(session); }
 export async function signOut() { return notify(await request<Session>('/logout', 'POST')); }
 export const changePassword = (currentPassword: string, password: string) => request('/password', 'POST', { currentPassword, password });
 export async function updateProfileName(name: string) { return notify(await request<Session>('/profile', 'PATCH', { name })); }
