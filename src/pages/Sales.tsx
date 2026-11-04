@@ -9,8 +9,8 @@ import type { Customer, PayStatus, Product, Sale, SaleItem } from '../types';
 import { Card, Empty, Field, Modal, Page, Stat, btn, btn2, inp } from '../ui';
 
 type Draft = { productId?: string; name: string; size: string; qty: string; price: string };
-const emptyDraft = (): Draft => ({ name: '', size: '', qty: '1', price: '' });
-const emptyCustomer = () => ({ cid: '', name: '', phone: '', email: '', address: '', discount: 0, delivery: 0, method: 'Cash', status: 'paid' as PayStatus, paid: 0 });
+const emptyDraft = (): Draft => ({ name: '', size: '', qty: '', price: '' });
+const emptyCustomer = () => ({ cid: '', name: '', phone: '', email: '', address: '', discount: '', delivery: '', method: 'Cash', status: 'paid' as PayStatus, paid: '' });
 
 export default function Sales() {
   const sales = useCol<Sale>('sales');
@@ -28,7 +28,7 @@ export default function Sales() {
   const live = sales.data.filter(sale => !sale.cancelled);
   const draftTotal = draft.name.trim() ? num(draft.qty) * num(draft.price) : 0;
   const subtotal = sum(items.map(item => item.qty * item.price)) + draftTotal;
-  const total = Math.max(0, subtotal - customer.discount + customer.delivery);
+  const total = Math.max(0, subtotal - num(customer.discount) + num(customer.delivery));
   const closeSale = () => {
     setOpen(false); setItems([]); setDraft(emptyDraft()); setCustomer(emptyCustomer()); setItemError('');
     const next = new URLSearchParams(params); next.delete('new'); setParams(next, { replace: true });
@@ -46,13 +46,13 @@ export default function Sales() {
     if (!customer.name.trim()) throw new Error('Enter the customer’s name.');
     const allItems = draft.name.trim() ? [...items, draftItem()] : items;
     if (!allItems.length) throw new Error('Enter at least one perfume.');
-    const sale = await createSale(allItems, customer);
+    const sale = await createSale(allItems, { ...customer, discount: num(customer.discount), delivery: num(customer.delivery), paid: num(customer.paid) });
     setLatest(sale); closeSale(); showToast('Sale recorded successfully');
     await Promise.all([sales.reload(), products.reload(), customers.reload()]);
   };
   const selectProduct = (id: string) => {
     const product = inventory.find(row => row.id === id)!;
-    setDraft({ productId: id, name: product.name, size: String(product.size), qty: '1', price: String(product.price) }); setItemError('');
+    setDraft({ productId: id, name: product.name, size: String(product.size), qty: draft.qty, price: String(product.price) }); setItemError('');
   };
   const selectCustomer = (id: string) => {
     const found = customers.data.find(row => row.id === id)!;
@@ -85,9 +85,9 @@ export default function Sales() {
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="Payment method"><select className={inp} value={customer.method} onChange={event => setCustomer({ ...customer, method: event.target.value })}>{['Cash', 'Bank transfer', 'POS', 'Other'].map(method => <option key={method}>{method}</option>)}</select></Field>
         <Field label="Payment status"><select className={inp} value={customer.status} onChange={event => setCustomer({ ...customer, status: event.target.value as PayStatus })}><option value="paid">Paid</option><option value="partial">Partially paid</option><option value="unpaid">Unpaid</option></select></Field>
-        {customer.status === 'partial' && <Field label="Amount paid (₦)"><input className={inp} type="number" min="0" step="0.01" max={total} value={customer.paid} onChange={event => setCustomer({ ...customer, paid: num(event.target.value) })} /></Field>}
+        {customer.status === 'partial' && <Field label="Amount paid (₦)"><input className={inp} type="number" min="0" step="0.01" max={total} value={customer.paid} onChange={event => setCustomer({ ...customer, paid: event.target.value })} /></Field>}
       </div>
-      <details className="entry-more"><summary>Discount & delivery (optional)</summary><div className="grid gap-3 md:grid-cols-2 mt-3"><Field label="Discount (₦)"><input className={inp} type="number" min="0" step="0.01" value={customer.discount} onChange={event => setCustomer({ ...customer, discount: num(event.target.value) })} /></Field><Field label="Delivery (₦)"><input className={inp} type="number" min="0" step="0.01" value={customer.delivery} onChange={event => setCustomer({ ...customer, delivery: num(event.target.value) })} /></Field></div></details>
+      <details className="entry-more"><summary>Discount & delivery (optional)</summary><div className="grid gap-3 md:grid-cols-2 mt-3"><Field label="Discount (₦)"><input className={inp} type="number" min="0" step="0.01" value={customer.discount} onChange={event => setCustomer({ ...customer, discount: event.target.value })} /></Field><Field label="Delivery (₦)"><input className={inp} type="number" min="0" step="0.01" value={customer.delivery} onChange={event => setCustomer({ ...customer, delivery: event.target.value })} /></Field></div></details>
     </Modal>}
   </Page>;
 }

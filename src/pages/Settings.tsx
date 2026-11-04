@@ -5,7 +5,7 @@ import { changePassword, onSessionChanged, updateProfileName } from '../auth';
 import { showToast } from '../Toast';
 import { ThemeSettings } from '../theme';
 import { InstallSettings } from '../PwaControls';
-import { emptyBiz, num, runAction } from '../lib';
+import { emptyBiz, runAction } from '../lib';
 import type { Biz } from '../types';
 import { Card, Field, Page, btn, btn2, inp } from '../ui';
 
@@ -30,9 +30,12 @@ function shrink(file: File): Promise<string> {
   });
 }
 
+type BusinessDraft = Omit<Biz, 'threshold'> & { threshold: string };
+const businessDraft = (business: Biz): BusinessDraft => ({ ...business, threshold: String(business.threshold) });
+
 export default function Settings() {
   const { business, loading, save: saveBusiness } = useBusiness();
-  const [b, setB] = useState<Biz>(emptyBiz);
+  const [b, setB] = useState<BusinessDraft>(() => businessDraft(emptyBiz));
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
@@ -49,12 +52,13 @@ export default function Settings() {
   const [password, setPassword] = useState('');
   const [changing, setChanging] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState('');
-  useEffect(() => { if (!dirty) setB(business); }, [business, dirty]);
-  const edit = (next: Biz) => { setB(next); setDirty(true); setMsg(''); };
+  useEffect(() => { if (!dirty) setB(businessDraft(business)); }, [business, dirty]);
+  const edit = (next: BusinessDraft) => { setB(next); setDirty(true); setMsg(''); };
   const save = async () => {
     if (saving) return;
+    if (!b.threshold.trim() || !Number.isInteger(Number(b.threshold)) || Number(b.threshold) < 0) throw new Error('Enter a whole-number stock threshold, zero or above.');
     setSaving(true);
-    try { const saved = await saveBusiness(b); setB(saved); setDirty(false); setMsg('Saved everywhere.'); showToast('Settings saved successfully'); }
+    try { const saved = await saveBusiness({ ...b, threshold: Number(b.threshold) }); setB(businessDraft(saved)); setDirty(false); setMsg('Saved everywhere.'); showToast('Settings saved successfully'); }
     finally { setSaving(false); }
   };
   const backup = async () => {
@@ -91,7 +95,7 @@ export default function Settings() {
         <p className="section-description">The details that make your business yours. Saving updates your workspace branding, invoice previews, PDFs, printing, and sharing.</p>
         <div className="grid gap-3 md:grid-cols-2">
           {text('name', 'Business name')}{text('phone', 'Phone number')}{text('email', 'Business email')}{text('address', 'Address')}
-          <Field label="Default low-stock threshold"><input className={inp} type="number" min="0" step="1" value={b.threshold} onChange={(e) => edit({ ...b, threshold: num(e.target.value) })} /></Field>
+          <Field label="Default low-stock threshold"><input className={inp} type="number" min="0" step="1" value={b.threshold} onChange={(e) => edit({ ...b, threshold: e.target.value })} /></Field>
           <Field label="Currency"><input className={inp} value="Nigerian Naira (NGN)" disabled /></Field>
         </div>
         <h3 className="text-sm font-medium mt-5">Social accounts</h3>

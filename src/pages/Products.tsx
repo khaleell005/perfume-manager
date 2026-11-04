@@ -3,18 +3,19 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useBusiness } from '../business';
 import { changeStock as saveStockChange, createRecord, updateRecord } from '../api';
-import { num, useCol, ngn, runAction } from '../lib';
+import { useCol, ngn, runAction } from '../lib';
 import type { Product } from '../types';
 import { Card, Empty, Field, Modal, Page, Stat, btn, btn2, inp } from '../ui';
 
-const blank: Product = { name: '', category: '', description: '', size: 50, price: 0, cost: 0, tracked: true, quantity: 0, threshold: 5, available: true, archived: false, createdAt: 0, updatedAt: 0 };
+type ProductDraft = Omit<Product, 'size' | 'price' | 'quantity' | 'threshold'> & { size: string; price: string; quantity: string; threshold: string };
+const blank: ProductDraft = { name: '', category: '', description: '', size: '', price: '', cost: 0, tracked: true, quantity: '', threshold: '', available: true, archived: false, createdAt: 0, updatedAt: 0 };
 type Row = Product & { id: string };
 
 export default function Products() {
   const { business, loading: businessLoading } = useBusiness();
   const { data, reload } = useCol<Product>('products');
   const moves = useCol<{ name: string; change: number; type: string; at: number }>('stockMovements');
-  const [form, setForm] = useState<Product | null>(null);
+  const [form, setForm] = useState<ProductDraft | null>(null);
   const [editId, setEditId] = useState('');
   const [params] = useSearchParams();
   const search = params.get('search') || '';
@@ -28,9 +29,9 @@ export default function Products() {
 
   const save = async () => {
     if (!form) return;
-    if (!form.name.trim() || form.price < 0 || form.quantity < 0) return setErr('Enter a name and valid price/quantity.');
+    if (!form.name.trim() || !form.size.trim() || !form.price.trim() || !form.quantity.trim()) throw new Error('Enter a name, size, selling price, and quantity.');
     const now = Date.now();
-    const clean = { ...form, tracked: true, available: true, updatedAt: now };
+    const clean = { ...form, size: Number(form.size), price: Number(form.price), quantity: Number(form.quantity), threshold: form.threshold.trim() ? Number(form.threshold) : business.threshold, tracked: true, available: true, updatedAt: now };
     if (editId) await updateRecord('products', editId, clean);
     else await createRecord('products', { ...clean, createdAt: now });
     showToast(editId ? 'Product updated successfully' : 'Product added successfully');
@@ -55,20 +56,19 @@ export default function Products() {
 
   const rows = data.filter((p) => p.archived === showArch && p.name.toLowerCase().includes(q.toLowerCase()) &&
     (filter === 'all' || (filter === 'low' && p.quantity > 0 && p.quantity <= p.threshold) || (filter === 'out' && p.quantity === 0)));
-  const set = <K extends keyof Product>(k: K, v: Product[K]) => setForm((f) => (f ? { ...f, [k]: v } : f));
+  const set = <K extends keyof ProductDraft>(k: K, v: ProductDraft[K]) => setForm((f) => (f ? { ...f, [k]: v } : f));
 
   return (
-    <Page title="Products & Inventory" right={<button className={btn} disabled={businessLoading} onClick={() => { setForm({ ...blank, threshold: business.threshold }); setEditId(''); setErr(''); }}>Add product</button>}>
+    <Page title="Products & Inventory" right={<button className={btn} disabled={businessLoading} onClick={() => { setForm({ ...blank }); setEditId(''); setErr(''); }}>Add product</button>}>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3"><Stat label="Active products" value={data.filter((p) => !p.archived).length} /><Stat label="Units in stock" value={data.filter((p) => !p.archived).reduce((n, p) => n + p.quantity, 0)} /><Stat label="Needs attention" value={data.filter((p) => !p.archived && p.quantity <= p.threshold).length} warn /></div>
       {form && (
         <Modal title={editId ? 'Edit product' : 'Add product'} description="Keep the details of every bottle in one place." onClose={() => setForm(null)} onSubmit={save} error={err} submitLabel={editId ? 'Save changes' : 'Save product'}>
           <div className="grid gap-3 md:grid-cols-3">
             <Field label="Name"><input className={inp} required placeholder="e.g. Love Struck" value={form.name} onChange={(e) => set('name', e.target.value)} /></Field>
-            <Field label="Category"><input className={inp} value={form.category} onChange={(e) => set('category', e.target.value)} /></Field>
-            <Field label="Size (ml)"><input className={inp} type="number" min="0.01" step="any" required value={form.size} onChange={(e) => set('size', num(e.target.value))} /></Field>
-            <Field label="Selling price (₦)"><input className={inp} type="number" min="0" step="any" value={form.price} onChange={(e) => set('price', num(e.target.value))} /></Field>
-            <Field label="Quantity"><input className={inp} type="number" min="0" step="1" required value={form.quantity} onChange={(e) => set('quantity', num(e.target.value))} /></Field>
-            <Field label="Low-stock threshold"><input className={inp} type="number" min="0" step="1" value={form.threshold} onChange={(e) => set('threshold', num(e.target.value))} /></Field>
+            <Field label="Size (ml)"><input className={inp} type="number" min="0.01" step="any" required value={form.size} onChange={(e) => set('size', e.target.value)} /></Field>
+            <Field label="Selling price (₦)"><input className={inp} type="number" min="0" step="any" required value={form.price} onChange={(e) => set('price', e.target.value)} /></Field>
+            <Field label="Quantity"><input className={inp} type="number" min="0" step="1" required value={form.quantity} onChange={(e) => set('quantity', e.target.value)} /></Field>
+            <Field label="Low-stock threshold"><input className={inp} type="number" min="0" step="1" placeholder={String(business.threshold)} value={form.threshold} onChange={(e) => set('threshold', e.target.value)} /></Field>
           </div>
         </Modal>
       )}
@@ -90,7 +90,7 @@ export default function Products() {
             <div className="flex flex-wrap gap-1">
               <button className={btn2} onClick={() => openStock(p, 'restock')}>Restock</button>
               <button className={btn2} onClick={() => openStock(p, 'adjust')}>Adjust</button>
-              <button className={btn2} onClick={() => { setForm({ ...p }); setEditId(p.id); setErr(''); }}>Edit</button>
+              <button className={btn2} onClick={() => { setForm({ ...p, size: String(p.size), price: String(p.price), quantity: String(p.quantity), threshold: String(p.threshold) }); setEditId(p.id); setErr(''); }}>Edit</button>
               <button className={btn2} onClick={() => void runAction(() => archive(p))}>{p.archived ? 'Restore' : 'Archive'}</button>
             </div>
           </div>
