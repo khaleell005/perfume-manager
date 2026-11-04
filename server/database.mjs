@@ -37,10 +37,18 @@ export function openStore(filename = process.env.SQLITE_PATH || 'data/perfume.sq
   `);
   const getRow = db.prepare('SELECT data FROM documents WHERE collection = ? AND id = ?');
   const putRow = db.prepare('INSERT INTO documents (collection, id, data) VALUES (?, ?, ?) ON CONFLICT(collection, id) DO UPDATE SET data = excluded.data');
+  let transactionDepth = 0;
   const transaction = callback => {
-    db.exec('BEGIN IMMEDIATE');
-    try { const result = callback(); db.exec('COMMIT'); return result; }
-    catch (error) { db.exec('ROLLBACK'); throw error; }
+    const depth = transactionDepth;
+    const savepoint = `store_${depth}`;
+    db.exec(depth === 0 ? 'BEGIN IMMEDIATE' : `SAVEPOINT ${savepoint}`);
+    transactionDepth++;
+    try { const result = callback(); db.exec(depth === 0 ? 'COMMIT' : `RELEASE SAVEPOINT ${savepoint}`); return result; }
+    catch (error) {
+      if (depth === 0) db.exec('ROLLBACK');
+      else db.exec(`ROLLBACK TO SAVEPOINT ${savepoint}; RELEASE SAVEPOINT ${savepoint}`);
+      throw error;
+    } finally { transactionDepth--; }
   };
   const get = (collection, id) => {
     const row = getRow.get(collection, id);
@@ -63,7 +71,7 @@ export function openStore(filename = process.env.SQLITE_PATH || 'data/perfume.sq
     const phone = String(input.phone || '').trim(), email = String(input.email || '').trim(), address = String(input.address || '').trim();
     let customer = input.cid ? requireRecord('customers', input.cid) : null;
     if (!customer) customer = store.list('customers').find(c => phone ? normalizePhone(c.phone) === normalizePhone(phone) : email ? String(c.email || '').toLowerCase() === email.toLowerCase() : !c.phone && !c.email && c.name.trim().toLowerCase() === name.toLowerCase());
-    return put('customers', customer?.id || randomUUID(), { name, phone: phone || customer?.phone || '', email: email || customer?.email || '', address: address || customer?.address || '', notes: customer?.notes || '', createdAt: customer?.createdAt || Date.now(), updatedAt: Date.now() }).id;
+    return put('customers', customer?.id || randomUUID(), { ...customer, name, phone: phone || customer?.phone || '', email: email || customer?.email || '', address: address || customer?.address || '', notes: customer?.notes || '', createdAt: customer?.createdAt || Date.now(), updatedAt: Date.now() }).id;
   }
   function returnStock(sale) {
     if (sale.cancelled) return;
@@ -104,6 +112,8 @@ export function openStore(filename = process.env.SQLITE_PATH || 'data/perfume.sq
   }
   const store = {
     close: () => db.close(),
+    // Local scripts can compose business operations into one atomic transaction.
+    withTransaction: callback => transaction(() => callback(store)),
     hasOwner: () => !!db.prepare('SELECT id FROM users LIMIT 1').get(),
     createOwner,
     findOwner: email => { const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email); return user ? publicUser(user) : null; },
@@ -191,7 +201,7 @@ export function openStore(filename = process.env.SQLITE_PATH || 'data/perfume.sq
         return updated;
       });
     },
-    createSale(input) {
+    createSale(input, options = {}) {
       check(object(input) && Array.isArray(input.items) && input.items.length > 0 && input.items.length <= 500, 'Add at least one item.');
       check(money(input.discount) && money(input.delivery) && money(input.paid), 'Enter valid payment, delivery, and discount amounts.');
       check(['name', 'phone', 'email', 'address', 'cid'].every(key => input[key] === undefined || typeof input[key] === 'string'), 'Enter valid customer details.');
@@ -223,14 +233,16 @@ export function openStore(filename = process.env.SQLITE_PATH || 'data/perfume.sq
         const n = Math.max(get('settings', 'counter')?.n || 0, highestInvoice) + 1;
         const customerId = saveCustomer(input);
         const id = randomUUID();
+        const createdAt = options.createdAt ?? Date.now();
         const sale = { invoiceNo: `INV-${String(n).padStart(5, '0')}`, items, subtotal, discount: input.discount, delivery: input.delivery,
           total, paid, method: input.method, status: paid >= total ? 'paid' : paid > 0 ? 'partial' : 'unpaid',
-          customerId, customerName: input.name?.trim() || undefined, customerPhone: input.phone?.trim() || undefined, customerEmail: input.email?.trim() || undefined, customerAddress: input.address?.trim() || undefined, refunds: [], refunded: 0, createdAt: Date.now() };
+          customerId, customerName: input.name?.trim() || undefined, customerPhone: input.phone?.trim() || undefined, customerEmail: input.email?.trim() || undefined, customerAddress: input.address?.trim() || undefined, refunds: [], refunded: 0, createdAt,
+          ...(options.demoKey ? { demo: true, demoKey: options.demoKey } : {}) };
         put('settings', 'counter', { n });
         for (const [productId, qty] of required) {
           const product = requireRecord('products', productId);
           put('products', productId, { ...product, quantity: product.quantity - qty, updatedAt: Date.now() });
-          put('stockMovements', randomUUID(), { productId, name: product.name, change: -qty, type: 'sale', ref: id, at: Date.now() });
+          put('stockMovements', randomUUID(), { productId, name: product.name, change: -qty, type: 'sale', ref: id, at: createdAt, ...(options.demoKey ? { demo: true } : {}) });
         }
         return put('sales', id, sale);
       });

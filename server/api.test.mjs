@@ -72,9 +72,11 @@ test('a single authenticated refund confirmation immediately deducts money and i
 test('saved business details update authenticated settings, public branding, and installation name', async t => {
   const { call } = fixture(t);
   const { cookie } = await call('/setup', { method: 'POST', data: credentials });
-  const profile = { name: '  Perfume by Aysha  ', phone: '08012345678', whatsapp: '08012345678', email: 'test@example.com', address: 'Test address', social: '@test', thanks: 'Thank you!', threshold: 8, logo: '' };
+  const profile = { name: '  Perfume by Aysha  ', phone: '08012345678', whatsapp: '08012345678', email: 'test@example.com', address: 'Test address', social: '@test', instagram: ' @ayshaperfumes ', tiktok: 'ayshafragrances', thanks: 'Thank you!', threshold: 8, logo: '' };
   const saved = await call('/records/settings/business', { method: 'PUT', cookie, data: profile });
   assert.equal(saved.status, 200); assert.equal(saved.body.name, 'Perfume by Aysha');
+  assert.equal(saved.body.instagram, '@ayshaperfumes');
+  assert.equal(saved.body.tiktok, 'ayshafragrances');
   const branding = await call('/branding');
   assert.deepEqual(branding.body, { name: 'Perfume by Aysha', logo: '' });
   assert.equal(branding.headers['cache-control'], 'no-store');
@@ -82,7 +84,10 @@ test('saved business details update authenticated settings, public branding, and
   const manifest = await call('/manifest.webmanifest');
   assert.equal(manifest.body.name, 'Perfume by Aysha');
   assert.match(manifest.headers['content-type'], /application\/manifest\+json/);
-  assert.equal((await call('/records/settings/business', { cookie })).body.whatsapp, profile.whatsapp);
+  const settings = (await call('/records/settings/business', { cookie })).body;
+  assert.equal(settings.whatsapp, profile.whatsapp);
+  assert.equal(settings.instagram, '@ayshaperfumes');
+  assert.equal(settings.tiktok, profile.tiktok);
   assert.equal((await call('/records/settings/business', { method: 'PUT', cookie, data: { ...profile, threshold: -1 } })).status, 400);
   assert.equal((await call('/records/settings/business', { cookie })).body.threshold, 8);
   const product = await call('/records/products', { method: 'POST', cookie, data: { name: 'Rose', size: 50, price: 10000, quantity: 5 } });

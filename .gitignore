@@ -5,6 +5,7 @@ dev-dist/
 .env.*
 !.env.example
 *service-account*.json
+*-firebase-adminsdk-*.json
 data/
 *.sqlite
 *.sqlite-wal

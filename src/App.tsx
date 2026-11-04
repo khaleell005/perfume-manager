@@ -4,6 +4,7 @@ import { onSessionChanged, createOwner, signIn, signOut, type User } from './aut
 import { Brand, BottleArt, Icon, btn, Field, inp } from './ui';
 import { ThemeToggle } from './theme';
 import { useBusiness } from './business';
+import { businessSocials } from '../shared/business.mjs';
 import { usePwa } from './pwa';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
@@ -158,7 +159,7 @@ export default function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-          <footer className="workspace-footer"><span>{business.social || 'A little order. A lot of possibility.'}</span><span>{business.name || 'Perfume Manager'}</span></footer>
+          <footer className="workspace-footer"><span>{businessSocials(business).join(' · ') || business.social || 'A little order. A lot of possibility.'}</span><span>{business.name || 'Perfume Manager'}</span></footer>
         </main>
       </div>
     </div>

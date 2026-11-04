@@ -16,7 +16,7 @@ export interface Sale {
 export interface Customer { name: string; phone: string; email: string; address: string; notes: string }
 export interface Expense { title: string; category: string; amount: number; date: string; description: string }
 export interface Biz {
-  name: string; phone: string; whatsapp: string; email: string; address: string; social: string;
+  name: string; phone: string; whatsapp: string; instagram: string; tiktok: string; email: string; address: string; social: string;
   thanks: string; threshold: number; logo: string;
 }
 export const CATEGORIES = ['Perfume oils and ingredients', 'Alcohol and mixing supplies', 'Bottles and containers', 'Labels and packaging', 'Transportation and delivery', 'Marketing and advertising', 'Equipment and supplies', 'Miscellaneous'];

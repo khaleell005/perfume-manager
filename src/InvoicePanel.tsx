@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { downloadInvoice, printInvoice, shareInvoice } from './invoice';
+import { downloadInvoice, invoiceDate, invoiceMoney, invoiceState, invoiceTotals, printInvoice, shareInvoice } from './invoice';
 import { ngn, runAction, waLink } from './lib';
 import { useBusiness } from './business';
 import type { Sale } from './types';
 import { btn2 } from './ui';
+import { businessSocials } from '../shared/business.mjs';
 export function InvoiceActions({ sale }: { sale: Sale }) {
   const { business, loading, error, refresh } = useBusiness();
   const [message, setMessage] = useState('');
@@ -12,5 +13,16 @@ export function InvoiceActions({ sale }: { sale: Sale }) {
 }
 export function InvoiceDetails({ sale }: { sale: Sale }) {
   const { business } = useBusiness();
-  return <div className="invoice-detail"><section className="invoice-business">{business.logo && <img src={business.logo} alt={`${business.name || 'Business'} logo`} />}<div><h3>{business.name || 'Perfume Manager'}</h3>{business.address && <p>{business.address}</p>}{business.phone && <p>Phone: {business.phone}</p>}{business.whatsapp && <p>WhatsApp: {business.whatsapp}</p>}{business.email && <p>{business.email}</p>}{business.social && <p>{business.social}</p>}</div></section><div className="invoice-summary"><div><span className="eyebrow">BILL TO</span><h3>{sale.customerName || 'Walk-in customer'}</h3><p>{[sale.customerPhone, sale.customerEmail, sale.customerAddress].filter(Boolean).join(' · ')}</p></div><div><strong>{sale.invoiceNo}</strong><p>{new Date(sale.createdAt).toLocaleString()}</p><span className={`status-badge status-${sale.cancelled ? 'cancelled' : sale.status}`}>{sale.cancelled ? 'Cancelled' : sale.status}</span></div></div><div className="invoice-items">{sale.items.map((item, index) => <div key={index}><div><strong>{item.name}</strong><p>{item.size} ml · {item.qty} × {ngn(item.price)}</p></div><b>{ngn(item.price * item.qty)}</b></div>)}</div><dl className="invoice-totals">{[['Subtotal', sale.subtotal], ['Discount', -sale.discount], ['Delivery', sale.delivery], ['Invoice total', sale.total], ['Payments received', sale.paid], ['Refunds paid', sale.refunded || 0], ['Balance due', sale.cancelled ? 0 : Math.max(0, sale.total - sale.paid)]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{ngn(Number(value))}</dd></div>)}</dl>{business.thanks && <p className="invoice-thanks">{business.thanks}</p>}</div>;
+  const state = invoiceState(sale);
+  return <article className="invoice-paper" aria-label={`Invoice ${sale.invoiceNo}`}>
+    <header className="paper-header">
+      <section className="invoice-business">{business.logo && <img src={business.logo} alt={`${business.name || 'Business'} logo`} />}<div><h3>{business.name || 'Perfume Manager'}</h3>{business.address && <p>{business.address}</p>}{business.phone && <p>Phone: {business.phone}</p>}{business.email && <p>{business.email}</p>}{businessSocials(business).map(line => <p key={line}>{line}</p>)}</div></section>
+      <div className="paper-title"><span>SALES INVOICE</span><h2>Invoice</h2><span className={`paper-status paper-status-${state.tone}`}>{state.label}</span></div>
+    </header>
+    <section className="paper-parties"><div><span className="paper-label">BILL TO</span><h3>{sale.customerName || 'Walk-in customer'}</h3>{[sale.customerPhone, sale.customerEmail, sale.customerAddress].filter(Boolean).map((line, index) => <p key={index}>{line}</p>)}</div><dl><div><dt>Invoice no.</dt><dd>{sale.invoiceNo}</dd></div><div><dt>Issued</dt><dd>{invoiceDate(sale.createdAt)}</dd></div><div><dt>Payment</dt><dd>{sale.method}</dd></div></dl></section>
+    <div className="paper-table-wrap"><table className="paper-table"><thead><tr><th scope="col">Perfume</th><th scope="col">Qty</th><th scope="col">Unit price</th><th scope="col">Amount</th></tr></thead><tbody>{sale.items.map((item, index) => <tr key={index}><td><strong>{item.name}</strong>{item.size && <span>{item.size} ml</span>}{item.note && <span>{item.note}</span>}</td><td>{item.qty}</td><td>{invoiceMoney(item.price)}</td><td>{invoiceMoney(item.price * item.qty)}</td></tr>)}</tbody></table></div>
+    <section className="paper-bottom"><div className="paper-payment"><span className="paper-label">PAYMENT DETAILS</span><strong>{sale.method}</strong><p>{sale.cancelled ? 'This invoice has been cancelled.' : state.balance === 0 ? 'Payment received. No balance remaining.' : `Outstanding balance: ${invoiceMoney(state.balance)}.`}</p>{(sale.refunded || 0) > 0 && <p>{invoiceMoney(sale.refunded || 0)} refunded. Retain this invoice for your records.</p>}</div><dl className="paper-totals">{invoiceTotals(sale).map(row => <div key={row.label} className={`paper-total-${row.kind}`}><dt>{row.label}</dt><dd>{invoiceMoney(row.amount)}</dd></div>)}</dl></section>
+    {business.thanks && <p className="invoice-thanks">{business.thanks}</p>}
+    <footer className="paper-footer"><span>{business.name || 'Perfume Manager'}</span><span>{sale.invoiceNo} · NGN</span></footer>
+  </article>;
 }

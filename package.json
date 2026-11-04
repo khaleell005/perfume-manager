@@ -10,7 +10,8 @@
     "seed:admin": "node scripts/seed-admin.mjs",
     "start": "node server/index.mjs",
     "test": "node --test server/*.test.mjs scripts/*.test.mjs",
-    "seed:business": "node scripts/seed-business.mjs"
+    "seed:business": "node scripts/seed-business.mjs",
+    "seed:demo": "node scripts/seed-demo.mjs"
   },
   "dependencies": {
     "jspdf": "^2.5.2",

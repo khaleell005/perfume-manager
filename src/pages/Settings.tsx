@@ -54,7 +54,7 @@ export default function Settings() {
     a.download = `backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
   };
-  const text = (k: keyof Biz, label: string) => <Field label={label}><input className={inp} value={String(b[k])} onChange={(e) => edit({ ...b, [k]: e.target.value })} /></Field>;
+  const text = (k: keyof Biz, label: string, placeholder?: string) => <Field label={label}><input className={inp} placeholder={placeholder} value={String(b[k])} onChange={(e) => edit({ ...b, [k]: e.target.value })} /></Field>;
   return (
     <Page title="Settings">
       <Card title="Appearance"><p className="section-description">Choose a look for your workspace. Your preference is saved on this device.</p><ThemeSettings /></Card>
@@ -62,9 +62,14 @@ export default function Settings() {
       <Card title="Business information">
         <p className="section-description">The details that make your business yours. Saving updates your workspace branding, invoice previews, PDFs, printing, and sharing.</p>
         <div className="grid gap-3 md:grid-cols-2">
-          {text('name', 'Business name')}{text('phone', 'Phone number')}{text('whatsapp', 'WhatsApp number')}{text('email', 'Business email')}{text('address', 'Address')}{text('social', 'Social media handles')}
+          {text('name', 'Business name')}{text('phone', 'Phone number')}{text('email', 'Business email')}{text('address', 'Address')}
           <Field label="Default low-stock threshold"><input className={inp} type="number" min="0" step="1" value={b.threshold} onChange={(e) => edit({ ...b, threshold: num(e.target.value) })} /></Field>
           <Field label="Currency"><input className={inp} value="Nigerian Naira (NGN)" disabled /></Field>
+        </div>
+        <h3 className="text-sm font-medium mt-5">Social accounts</h3>
+        <p className="section-description mt-2">Add the accounts customers can reach you on. Filled details appear on your invoices.</p>
+        <div className="grid gap-3 md:grid-cols-2">
+          {text('instagram', 'Instagram username', '@yourbusiness')}{text('tiktok', 'TikTok username', '@yourbusiness')}{text('whatsapp', 'WhatsApp number', '+234…')}
         </div>
         <div className="mt-3"><Field label="Invoice thank-you message"><input className={inp} value={b.thanks} onChange={(e) => edit({ ...b, thanks: e.target.value })} /></Field></div>
         <div className="mt-3 flex items-center gap-3">
