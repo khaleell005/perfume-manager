@@ -148,11 +148,11 @@ export const downloadInvoice = (sale: Sale, business: Biz) => buildInvoice(sale,
 export function printInvoice(sale: Sale, business: Biz) {
   const pdf = buildInvoice(sale, business); pdf.autoPrint(); window.open(pdf.output('bloburl') as unknown as string);
 }
-export async function shareInvoice(sale: Sale, business: Biz) {
+export async function shareInvoice(sale: Sale, business: Biz, options: { text?: string } = {}) {
   const pdf = buildInvoice(sale, business);
   const file = new File([pdf.output('blob')], invoiceFilename(sale), { type: 'application/pdf' });
   if (navigator.canShare?.({ files: [file] })) {
-    try { await navigator.share({ files: [file], title: sale.invoiceNo, text: `${business.name || 'Invoice'} · ${sale.invoiceNo}` }); return 'shared' as const; }
+    try { await navigator.share({ files: [file], title: sale.invoiceNo, text: options.text || `${business.name || 'Invoice'} · ${sale.invoiceNo}` }); return 'shared' as const; }
     catch (error) {
       if ((error as Error).name === 'AbortError') return 'cancelled' as const;
       if (!['NotAllowedError', 'NotSupportedError', 'TypeError'].includes((error as Error).name)) throw error;

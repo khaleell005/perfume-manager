@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { downloadInvoice, invoiceDate, invoiceMoney, invoiceState, invoiceTotals, printInvoice, shareInvoice } from './invoice';
 import { ngn, runAction, waLink } from './lib';
 import { useBusiness } from './business';
@@ -8,9 +8,42 @@ import { businessSocials } from '../shared/business.mjs';
 export function InvoiceActions({ sale }: { sale: Sale }) {
   const { business, loading, error, refresh } = useBusiness();
   const [message, setMessage] = useState('');
-  return <>{error && <p className="form-notice" role="alert">{error} <button type="button" onClick={() => void refresh()}>Retry business details</button></p>}<div className="invoice-actions"><button type="button" disabled={loading || !!error} className={btn2} onClick={() => downloadInvoice(sale, business)}>Download PDF</button><button type="button" disabled={loading || !!error} className={btn2} onClick={() => void runAction(async () => { const result = await shareInvoice(sale, business); setMessage(result === 'downloaded' ? 'Invoice PDF downloaded. Attach it to your customer’s message.' : ''); })}>Share invoice</button><button type="button" disabled={loading || !!error} className={btn2} onClick={() => printInvoice(sale, business)}>Print</button>{sale.customerPhone && <button type="button" disabled={loading || !!error} className={btn2} onClick={() => { downloadInvoice(sale, business); window.open(`${waLink(sale.customerPhone!)}?text=${encodeURIComponent(`Hello ${sale.customerName || ''}, here is your invoice ${sale.invoiceNo} from ${business.name || 'our perfume store'}. Total: ${ngn(sale.total)}.`)}`, '_blank', 'noopener,noreferrer'); setMessage('Invoice PDF downloaded. Attach it in the WhatsApp chat that opened.'); }}>WhatsApp</button>}</div>{message && <p className="entry-hint" role="status">{message}</p>}</>;
-
+  const [whatsAppFallback, setWhatsAppFallback] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const sharePending = useRef(false);
+  const recipient = `${sale.customerName || 'your customer'}${sale.customerPhone ? ` (${sale.customerPhone})` : ''}`;
+  const whatsAppText = `Hello ${sale.customerName || ''}, here is your invoice ${sale.invoiceNo} from ${business.name || 'our perfume store'}. Total: ${ngn(sale.total)}.`;
+  const whatsAppUrl = sale.customerPhone ? `${waLink(sale.customerPhone)}?text=${encodeURIComponent(whatsAppText)}` : '';
+  useEffect(() => { setMessage(''); setWhatsAppFallback(false); }, [sale.invoiceNo]);
+  const share = async (whatsApp: boolean) => {
+    if (sharePending.current) return;
+    sharePending.current = true; setSharing(true); setWhatsAppFallback(false);
+    setMessage(whatsApp ? `Choose WhatsApp, then ${recipient}, to share the attached invoice PDF.` : '');
+    try {
+      const result = await shareInvoice(sale, business, whatsApp ? { text: whatsAppText } : {});
+      if (result === 'downloaded') {
+        setWhatsAppFallback(whatsApp);
+        setMessage(whatsApp
+          ? `This browser cannot attach files to WhatsApp automatically. The invoice PDF has been downloaded. Open ${recipient}’s chat below and attach the downloaded PDF as a document.`
+          : 'Invoice PDF downloaded. Attach it to your customer’s message.');
+      } else setMessage('');
+    } catch (error) { setMessage(''); throw error; }
+    finally { sharePending.current = false; setSharing(false); }
+  };
+  const disabled = loading || !!error || sharing;
+  return <>
+    {error && <p className="form-notice" role="alert">{error} <button type="button" onClick={() => void refresh()}>Retry business details</button></p>}
+    <div className="invoice-actions">
+      <button type="button" disabled={disabled} className={btn2} onClick={() => downloadInvoice(sale, business)}>Download PDF</button>
+      <button type="button" disabled={disabled} className={btn2} onClick={() => void runAction(() => share(false))}>Share invoice</button>
+      <button type="button" disabled={disabled} className={btn2} onClick={() => printInvoice(sale, business)}>Print</button>
+      {sale.customerPhone && <button type="button" disabled={disabled} className={btn2} onClick={() => void runAction(() => share(true))}>WhatsApp</button>}
+    </div>
+    {message && <p className="entry-hint" role="status">{message}</p>}
+    {whatsAppFallback && whatsAppUrl && <a className={btn2 + ' mt-3'} href={whatsAppUrl} target="_blank" rel="noopener noreferrer">Open customer’s WhatsApp</a>}
+  </>;
 }
+
 export function InvoiceDetails({ sale }: { sale: Sale }) {
   const { business } = useBusiness();
   const state = invoiceState(sale);
